@@ -127,7 +127,7 @@ using namespace std;
 const char* sockerr::errstr () const
 {
 #ifndef WIN32
-  return SYS_ERRLIST [err];
+  return 0;
 #else
 	return 0; // TODO
 #endif

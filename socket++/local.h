@@ -106,10 +106,10 @@ extern "C" char* inet_ntoa (in_addr ina);
   }
 #endif
 
-#ifndef SYS_ERRLIST_DECLARED
-  extern char* SYS_ERRLIST [];
-#endif
-#undef SYS_ERRLIST_DECLARED
+// #ifndef SYS_ERRLIST_DECLARED
+//   extern char* SYS_ERRLIST [];
+// #endif
+// #undef SYS_ERRLIST_DECLARED
 
 typedef RETSIGTYPE (*sighnd) (SIGHND_ARGTYPE);
 
