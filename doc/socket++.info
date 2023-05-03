@@ -1,0 +1,2408 @@
+This is socket++.info, produced by makeinfo version 6.8 from
+socket++.texi.
+
+INFO-DIR-SECTION Programming & development tools
+START-INFO-DIR-ENTRY
+* socket++: (socket++.info).			C++ family of socket classes.
+END-INFO-DIR-ENTRY
+
+This info file describes the C++ family of socket classes.
+
+   Copyright (C) 1992,1993,1994 Gnanasekaran Swaminathan
+<gs4t@virginia.edu>
+
+   Permission is granted to make and distribute verbatim copies of this
+document provided the copyright notice and this permission notice are
+preserved on all copies.
+
+
+File: socket++.info,  Node: Top,  Next: Copying,  Prev: (dir),  Up: (dir)
+
+Socket++ Library
+****************
+
+Socket++ is a family of C++ classes that gives the same interface as the
+iostream classes for input and output for communication between
+processes.
+
+   This documentation describes Version: 12Jan97 1.11 of socket++
+library.
+
+* Menu:
+
+* Copying::                     Copyright information.
+* Acknowledgments::             Thanks!
+* Overview of Socket++::        Overview of socket++ library.
+* sockbuf Class::               Socket streambuf class.
+* sockAddr Class::              Base class for socket addresses.
+
+* sockinetbuf Class::           Socket class for INET address family.
+* sockinetaddr Class::          Address class for INET address family of
+                                        sockets.
+
+* sockunixbuf Class::           Socket class for UNIX address family.
+* sockunixaddr Class::          Address class for UNIX address family of
+                                        sockets.
+
+* sockstream Classes::          I/O socket stream classes and some examples.
+* pipestream Classes::          I/O stream classes that provides pipe,
+                                        socketpair, and popen facilities.
+
+* Fork Class::                  Use the Fork class to fork a child
+                                        process.
+
+* protocol Class::              Protocol base class.
+* echo Class::                  Class implementing the Echo protocol.
+* smtp Class::                  Class implementing the SMTP protocol.
+
+* Error Handling::              Describes the default error handling in
+                                        the socket++ library.
+* Pitfalls::                    Common mistakes that socket++ library
+                                        users make.
+
+* Index::                       Index to concepts and program names
+
+
+File: socket++.info,  Node: Copying,  Next: Acknowledgments,  Up: Top
+
+Socket++ Library Copyright Notice
+*********************************
+
+Copyright (C) 1992,1993,1994 Gnanasekaran Swaminathan
+
+   Permission is granted to use at your own risk and distribute this
+software in source and binary forms provided the above copyright notice
+and this paragraph are preserved on all copies.  This software is
+provided "as is" with no express or implied warranty.
+
+
+File: socket++.info,  Node: Acknowledgments,  Next: Overview of Socket++,  Prev: Copying,  Up: Top
+
+Acknowledgments
+***************
+
+Gordon Joly <G.Joly@cs.ucl.ac.uk> for reporting bugs in pipestream class
+implementation and providing an ftp site for the socket++ library at
+cs.ucl.ac.uk:~ftp/coside/gnu/socket++-1.x.tar.gz He also knows how to
+make the socket++ library a shared library.
+
+   Jim Anderson for reporting a bug in sockinet.C
+
+   Carl Gay <cgay@skinner.cs.uoregon.edu> for reporting a bug and a fix
+in sockinet.C
+
+   Oliver Imbusch <flabes@parystec.de> for reporting a bug in
+Makefile.in and suggesting several enhancements for sockbuf class.
+
+   Dierk Wendt <wendt@lambda.hella.de> for reporting errors in the
+socket++ documentation.
+
+   Per Bothner <bothner@cygnus.com> for configure, config.sub,
+config.shared and move-if-change files that are used to generate
+Makefile.  These files are taken from his libg++-2.4 and hence, these
+files are governed by the Copyright Notice found in the file LICENCE in
+libg++.
+
+
+File: socket++.info,  Node: Overview of Socket++,  Next: sockbuf Class,  Prev: Acknowledgments,  Up: Top
+
+1 Overview of Socket++ Library
+******************************
+
+Socket++ library defines a family of C++ classes that can be used more
+effectively than directly calling the underlying low-level system
+functions.  One distinct advantage of the socket++ is that it has the
+same interface as that of the iostream so that the users can perform
+type-safe input output.  See your local IOStream library documentation
+for more information on iostreams.
+
+   'streambuf' counterpart of the socket++ is 'sockbuf'.  'sockbuf' is
+an endpoint for communication with yet another 'sockbuf' or simply a
+'socket' descriptor.  'sockbuf' has also methods that act as interfaces
+for most of the commonly used system calls that involve sockets.  *Note
+sockbuf Class::, for more information on the socket buffer class.
+
+   For each communication domain, we derive a new class from 'sockbuf'
+that has some additional methods that are specific to that domain.  At
+present, only UNIX and INET domains are supported.  'sockunixbuf' class
+and 'sockinetbuf' class define the UNIX and INET domain of sockets
+respectively.  *Note sockunixbuf Class::, for UNIX sockets and *Note
+sockinetbuf Class::, for INET sockets.
+
+   We also have domain specific socket address classes that are derived
+from a common base class called 'sockAddr'.  'sockunixaddr' class is
+used for UNIX domain addresses and 'sockinetaddr' class is used for INET
+domain addresses.  For more information on address classes see *note
+sockAddr Class::, *note sockunixaddr Class::, and *note sockinetaddr
+Class::.
+     _Note_: 'sockAddr' is not spelled 'sockaddr' in order to prevent
+     name clash with the 'struct sockaddr' declared in '<sys/socket.h>'.
+
+   We noted earlier that socket++ provides the same interface as the
+iostream library.  For example, in the internet domain, we have
+'isockinet', 'osockinet', and 'iosockinet' classes that are counterparts
+to 'istream', 'ostream', and 'iostream' classes of IOStream library.
+For more details on 'iosockstream' classes see *Note sockstream
+Classes::.
+
+   The services of 'pipe()', 'socketpair()', and 'popen()' system calls
+are provided by the 'pipestream' class.  *Note pipestream Classes::.
+
+
+File: socket++.info,  Node: sockbuf Class,  Next: sockAddr Class,  Prev: Overview of Socket++,  Up: Top
+
+2 'sockbuf' Class
+*****************
+
+'sockbuf' class is derived from 'streambuf' class of the iostream
+library.  You can simultaneously read and write into a 'sockbuf' just
+like you can listen and talk through a telephone.  To accomplish the
+above goal, we maintain two independent buffers for reading and writing.
+
+* Menu:
+
+* Constructors::              How to construct a 'sockbuf' object
+                                     and how to open a socket?
+* Destructor::                How to destruct a 'sockbuf' object
+                                     and how to close a socket?
+* Reading and Writing::       How to use 'sockbuf' as 'streambuf'?
+* Connection Establishment::  How to bind an address and establish a
+                                     connection?
+* Socket Options::            How to set and get socket options?
+* Timeouts::                  How to gracefully handle connection inactivity?
+
+
+File: socket++.info,  Node: Constructors,  Next: Destructor,  Up: sockbuf Class
+
+2.1 Constructors
+================
+
+'sockbuf' constructors sets up an endpoint for communication.  A
+'sockbuf' object so created can be read from and written to in
+linebuffered mode.  To change mode, refer to 'streambuf' class in your
+IOStream library.
+     _Note_: If you are using AT&T IOStream library, then the
+     linebuffered mode is permanently turned off.  Thus, you need to
+     explicitly flush a socket stream.  You can flush a socket stream
+     buffer in one of the following four ways:
+              // os is a socket ostream
+              os << "this is a test" << endl;
+              os << "this is a test\n" << flush;
+              os << "this is a test\n"; os.flush ();
+              os << "this is a test\n"; os->sync ();
+
+   'sockbuf' objects are created as follows where
+   - 's' and 'so' are 'sockbuf' objects
+   - 'sd' is an integer which is a socket descriptor
+   - 'af' and 'proto' are integers which denote domain number and
+     protocol number respectively
+   - 'ty' is a 'sockbuf::type' and must be one of
+     'sockbuf::sock_stream', 'sockbuf::sock_dgram', 'sockbuf::sock_raw',
+     'sockbuf::sock_rdm', and 'sockbuf::sock_seqpacket'
+
+'sockbuf s(sd);'
+'sockbuf s;'
+     Set socket descriptor of 's' to 'sd' (defaults to -1).  'sockbuf'
+     destructor will close 'sd'.
+
+'sockbuf s(af, ty, proto);'
+     Set socket descriptor of 's' to '::socket(af, int(ty), proto);'
+
+'sockbuf so(s);'
+     Set socket descriptor of 'so' to the socket descriptor of 's'.
+
+'s.open(ty, proto)'
+     does nothing and returns simply '0', the null pointer to 'sockbuf'.
+
+'s.is_open()'
+     returns a non-zero number if the socket descriptor is open else
+     return 0.
+
+'s = so;'
+     return a reference 's' after assigning 's' with 'so'.
+
+
+File: socket++.info,  Node: Destructor,  Next: Reading and Writing,  Prev: Constructors,  Up: sockbuf Class
+
+2.2 Destructor
+==============
+
+'sockbuf::~sockbuf()' flushes output and closes its socket if no other
+sockbuf is referencing it and _S_DELETE_DONT_CLOSE flag is not set.  It
+also deletes its read and write buffers.
+
+   In what follows,
+   - 's' is a 'sockbuf' object
+   - 'how' is of type 'sockbuf::shuthow' and must be one of
+     'sockbuf::shut_read', 'sockbuf::shut_write', and
+     'sockbuf::shut_readwrite'
+
+'sockbuf::~sockbuf()'
+     flushes output and closes its socket if no other 'sockbuf' object
+     is referencing it before deleting its read and write buffers.  If
+     the _S_DELETE_DONT_CLOSE flag is set, then the socket is not
+     closed.
+
+'s.close()'
+     closes the socket even if it is referenced by other 'sockbuf'
+     objects and _S_DELETE_DONT_CLOSE flag is set.
+
+'s.shutdown(how)'
+     shuts down read if 'how' is 'sockbuf::shut_read', shuts down write
+     if 'how' is 'sockbuf::shut_write', and shuts down both read and
+     write if 'how' is 'sockbuf::shut_readwrite'.
+
+
+File: socket++.info,  Node: Reading and Writing,  Next: Connection Establishment,  Prev: Destructor,  Up: sockbuf Class
+
+2.3 Reading and Writing
+=======================
+
+'sockbuf' class offers several ways to read and write and tailors the
+behavior of several virtual functions of 'streambuf' for socket
+communication.
+
+   In case of error, 'sockbuf::error(const char*)' is called.
+
+   In what follows,
+   - 's' is a 'sockbuf' object
+   - 'buf' is buffer of type 'char*'
+   - 'bufsz' is an integer and is less than 'sizeof(buf)'
+   - 'msgf' is an integer and denotes the message flag
+   - 'sa' is of type 'sockAddr'
+   - 'msgh' is a pointer to 'struct msghdr'
+   - 'wp' is an integer and denotes time in seconds
+   - 'c' is a char
+
+'s.is_open()'
+     returns a non-zero number if the socket descriptor is open else
+     return 0.
+
+'s.is_eof()'
+     returns a non-zero number if the socket has seen EOF while reading
+     else return 0.
+
+'s.write(buf, bufsz)'
+     returns an int which must be equal to 'bufsz' if 'bufsz' chars in
+     the 'buf' are written successfully.  It returns 0 if there is
+     nothing to write or if, in case of timeouts, the socket is not
+     ready for write *note Timeouts::.
+
+'s.send(buf, bufsz, msgf)'
+     same as 'sockbuf::write' described above but allows the user to
+     control the transmission of messages using the message flag 'msgf'.
+     If 'msgf' is 'sockbuf::msg_oob' and the socket type of 's' is
+     'sockbuf::sock_stream', 's' sends the message in OUT-OF-BAND mode.
+     If 'msgf' is 'sockbuf::msg_dontroute', 's' sends the outgoing
+     packets without routing.  If 'msgf' is 0, which is the default
+     case, 'sockbuf::send' behaves exactly like 'sockbuf::write'.
+
+'s.sendto(sa, buf, bufsz, msgf)'
+     same as 'sockbuf::send' but works on unconnected sockets.  'sa'
+     specifies the TO address for the message.
+
+'s.sendmsg(msgh, msgf)'
+     same as 'sockbuf::send' but sends a 'struct msghdr' object instead.
+
+'s.sys_write(buf, bufsz)'
+     calls 'sockbuf::write' and returns the result.  Unlike
+     'sockbuf::write' 'sockbuf::sys_write' is declared as a virtual
+     function.
+
+'s.read(buf, bufsz)'
+     returns an int which is the number of chars read into the 'buf'.
+     In case of EOF, return EOF. Here, 'bufsz' indicates the size of the
+     'buf'.  In case of timeouts, return 0 *note Timeouts::.
+
+'s.recv(buf, bufsz, msgf)'
+     same as 'sockbuf::read' described above but allows the user to
+     receive OUT-OF-BAND data if 'msgf' is 'sockbuf::msg_oob' or to
+     preview the data waiting to be read if 'msgf' is
+     'sockbuf::msg_peek'.  If 'msgf' is 0, which is the default case,
+     'sockbuf::recv' behaves exactly like 'sockbuf::read'.
+
+'s.recvfrom(sa, buf, bufsz, msgf)'
+     same as 'sockbuf::recv' but works on unconnected sockets.  'sa'
+     specifies the FROM address for the message.
+
+'s.recvmsg(msgh, msgf)'
+     same as 'sockbuf::recv' but reads a 'struct msghdr' object instead.
+
+'s.sys_read(buf, bufsz)'
+     calls 'sockbuf::read' and returns the result.  Unlike
+     'sockbuf::read' 'sockbuf::sys_read' is declared as a virtual
+     function.
+
+'s.is_readready(wp_sec, wp_usec)'
+     returns a non-zero int if 's' has data waiting to be read from the
+     communication channel.  If 'wp_sec >= 0', it waits for 'wp_sec 10^6
+     + wp_usec' microseconds before returning 0 in case there are no
+     data waiting to be read.  If 'wp_sec < 0', then it waits until a
+     datum arrives at the communication channel.  'wp_usec' defaults to
+     0.
+          _Please Note_: The data waiting in 'sockbuf''s own buffer is
+          different from the data waiting in the communication channel.
+
+'s.is_writeready(wp_sec, wp_usec)'
+     returns a non-zero int if data can be written onto the
+     communication channel of 's'.  If 'wp_sec >= 0', it waits for
+     'wp_sec 10^6 + wp_usec' microseconds before returning 0 in case no
+     data can be written.  If 'wp_sec < 0', then it waits until the
+     communication channel is ready to accept data.  'wp_usec' defaults
+     to 0.
+          _Please Note_: The buffer of the 'sockbuf' class is different
+          from the buffer of the communication channel buffer.
+
+'s.is_exceptionpending(wp_sec, wp_usec)'
+     returns non-zero int if 's' has any exception events pending.  If
+     'wp_sec >= 0', it waits for 'wp_sec 10^6 + wp_usec' microseconds
+     before returning 0 in case 's' does not have any exception events
+     pending.  If 'wp_sec < 0', then it waits until an expception event
+     occurs.  'wp_usec' defaults to 0.
+          _Please Note_: The exceptions that
+          'sockbuf::is_exceptionpending' is looking for are different
+          from the C++ exceptions.
+
+'s.flush_output()'
+     flushes the output buffer and returns the number of chars flushed.
+     In case of error, return EOF. 'sockbuf::flush_output' is a
+     protected member function and it is not available for general
+     public.
+
+'s.doallocate()'
+     allocates free store for read and write buffers of 's' and returns
+     1 if allocation is done and returns 0 if there is no need.
+     'sockbuf::doallocate' is a protected virtual member function and it
+     is not available for general public.
+
+'s.underflow()'
+     returns the unread char in the buffer as an unsigned char if there
+     is any.  Else returns EOF if 's' cannot allocate space for the
+     buffers, cannot read or peer is closed.  'sockbuf::underflow' is a
+     protected virtual member function and it is not available for
+     general public.
+
+'s.overflow(c)'
+     if 'c==EOF', call and return the result of 'flush_output()', else
+     if 'c=='\n'' and 's' is linebuffered, call 'flush_output()' and
+     return 'c' unless 'flush_output()' returns EOF, in which case
+     return EOF. In any other case, insert char 'c' into the buffer and
+     return 'c' as an unsigned char.  'sockbuf::overflow' is a protected
+     member virtual function and it is not available for general public.
+          _Node:_ linebuffered mode does not work with AT&T IOStream
+          library.  Use explicit flushing to flush 'sockbuf'.
+
+'s.sync()'
+     calls 'flush_output()' and returns the result.  Useful if the user
+     needs to flush the output without writing newline char into the
+     write buffer.
+
+'s.xsputn(buf, bufsz)'
+     write 'bufsz' chars into the buffer and returns the number of chars
+     successfully written.  Output is flushed if any char in
+     'buf[0..bufsz-1]' is ''\n''.
+
+'s.recvtimeout(wp)'
+     sets the recv timeout to 'wp' seconds.  If 'wp' is -1, it is a
+     block and if 'wp' is 0, it is a poll.
+
+     It affects all read functions.  If the socket is not read ready
+     within 'wp' seconds, the read call will return 0.  It also affects
+     'sockbuf::underflow'.  'sockbuf::underflow' will not set the
+     '_S_EOF_SEEN' flag if it is returning EOF because of timeout.
+
+     'sockbuf::recvtimeout' returns the old recv timeout value.
+
+'s.sendtimeout(wp)'
+     sets the send timeout to 'wp' seconds.  If 'wp' is -1, it is a
+     block and if 'wp' is 0, it is a poll.
+
+     It affects all write functions.  If the socket is not write ready
+     within 'wp' seconds, the write call will return 0.
+
+     'sockbuf::sendtimeout' returns the old send timeout value.
+
+
+File: socket++.info,  Node: Connection Establishment,  Next: Socket Options,  Prev: Reading and Writing,  Up: sockbuf Class
+
+2.4 Establishing connections
+============================
+
+A name must be bound to a 'sockbuf' if processes want to refer to it and
+use it for communication.  Names must be unique.  A UNIX name is a
+3-tuple, <PROTOCOL, LOCAL PATH, PEER PATH>.  An INET name is a 5-tuple,
+<PROTOCOL, LOCAL ADDR, LOCAL PORT, PEER ADDR, PEER PORT>.
+'sockbuf::bind' is used to specify the local half of the name--<LOCAL
+PATH> for UNIX and <LOCAL ADDR, LOCAL PORT> for INET.
+'sockbuf::connect' and 'sockbuf::accept' are used to specify the peer
+half of the name--<PEER PATH> for UNIX and <PEER ADDR, PEER PORT> for
+INET.
+
+   In what follows,
+   - 's' and 'so' are 'sockbuf' objects
+   - 'sa' is a 'sockAddr' object
+   - 'nc' is an integer denoting the number of connections to allow
+
+'s.bind(sa)'
+     binds 'sockAddr' 'sa' as the local half of the name for 's'.  It
+     returns 0 on success and returns the errno on failure.
+
+'s.connect(sa)'
+     'sockbuf::connect' uses 'sa' to provide the peer half of the name
+     for 's' and to establish the connection itself.  'sockbuf::connect'
+     also provides the local half of the name automatically and hence,
+     the user should not use 'sockbuf::bind' to bind any local half of
+     the name.  It returns 0 on success and returns the errno on
+     failure.
+
+'s.listen(nc)'
+     makes 's' ready to accept connections.  'nc' specifies the maximum
+     number of outstanding connections that may be queued and must be at
+     least 1 and less than or equal to 'sockbuf::somaxconn' which is
+     usually 5 on most systems.
+
+'sockbuf so = s.accept(sa)'
+'sockbuf so = s.accept()'
+     accepts connections and returns the peer address in 'sa'.  's' must
+     be a listening 'sockbuf'.  See 'sockbuf::listen' above.
+
+
+File: socket++.info,  Node: Socket Options,  Next: Timeouts,  Prev: Connection Establishment,  Up: sockbuf Class
+
+2.5 Getting and Setting Socket Options
+======================================
+
+Socket options are used to control a socket communication.  New options
+can be set and old value of the options can be retrived at the protocol
+level or at the socket level by using 'setopt' and 'getopt' member
+functions.  In addition, you can also use special member functions to
+get and set specific options.
+
+   In what follows,
+   - 's' is a 'sockbuf' object
+   - 'opval' is an integer and denotes the option value
+   - 'op' is of type 'sockbuf::option' and must be one of
+        * 'sockbuf::so_error' used to retrieve and clear error status
+        * 'sockbuf::so_type' used to retrieve type of the socket
+        * 'sockbuf::so_debug' is used to specify recording of debugging
+          information
+        * 'sockbuf::so_reuseaddr' is used to specify the reuse of local
+          address
+        * 'sockbuf::so_keepalive' is used to specify whether to keep
+          connections alive or not
+        * 'sockbuf::so_dontroute' is used to specify whether to route
+          messages or not
+        * 'sockbuf::so_broadcast' is used to specify whether to
+          broadcast 'sockbuf::sock_dgram' messages or not
+        * 'sockbuf::so_oobinline' is used to specify whether to inline
+          OUT-OF-BAND data or not.
+        * 'sockbuf::so_linger' is used to specify for how long to linger
+          before shutting down
+        * 'sockbuf::so_sndbuf' is used to retrieve and to set the size
+          of the send buffer (communication channel buffer not
+          'sockbuf''s internal buffer)
+        * 'sockbuf::so_rcvbuf' is used to retrieve and to set the size
+          of the recv buffer (communication channel buffer not
+          'sockbuf''s internal buffer)
+
+'s.getopt(op, &opval, sizeof(opval), oplevel)'
+     gets the option value of the 'sockbuf::option' 'op' at the option
+     level 'oplevel' in 'opval'.  It returns the actual size of the
+     buffer 'opval' used.  The default value of the 'oplevel' is
+     'sockbuf::sol_socket'.
+
+'s.setopt(op, &opval, sizeof(opval), oplevel)'
+     sets the option value of the 'sockbuf::option' 'op' at the option
+     level 'oplevel' to 'opval'.  The default value of the 'oplevel' is
+     'sockbuf::sol_socket'.
+
+'s.gettype()'
+     gets the socket type of 's'.  The return type is 'sockbuf::type'.
+
+'s.clearerror()'
+     gets and clears the error status of the socket.
+
+'s.debug(opval)'
+     if 'opval' is not -1, set the 'sockbuf::so_debug' option value to
+     'opval'.  In any case, return the old option value of
+     'sockbuf::so_debug' option.  The default value of 'opval' is -1.
+
+'s.reuseaddr(opval)'
+     if 'opval' is not -1, set the 'sockbuf::so_reuseaddr' option value
+     to 'opval'.  In any case, return the old option value of
+     'sockbuf::so_reuseaddr' option.  The default value of 'opval' is
+     -1.
+
+'s.dontroute(opval)'
+     if 'opval' is not -1, set the 'sockbuf::so_dontroute' option value
+     to 'opval'.  In any case, return the old option value of
+     'sockbuf::so_dontroute' option.  The default value of 'opval' is
+     -1.
+
+'s.oobinline(opval)'
+     if 'opval' is not -1, set the 'sockbuf::so_oobinline' option value
+     to 'opval'.  In any case, return the old option value of
+     'sockbuf::so_oobinline' option.  The default value of 'opval' is
+     -1.
+
+'s.broadcast(opval)'
+     if 'opval' is not -1, set the 'sockbuf::so_broadcast' option value
+     to 'opval'.  In any case, return the old option value of
+     'sockbuf::so_broadcast' option.  The default value of 'opval' is
+     -1.
+
+'s.keepalive(opval)'
+     if 'opval' is not -1, set the 'sockbuf::so_keepalive' option value
+     to 'opval'.  In any case, return the old option value of
+     'sockbuf::so_keepalive' option.  The default value of 'opval' is
+     -1.
+
+'s.sendbufsz(opval)'
+     if 'opval' is not -1, set the new send buffer size to 'opval'.  In
+     any case, return the old buffer size of the send buffer.  The
+     default value of 'opval' is -1.
+
+'s.recvbufsz(opval)'
+     if 'opval' is not -1, set the new recv buffer size to 'opval'.  In
+     any case, return the old buffer size of the recv buffer.  The
+     default value of 'opval' is -1.
+
+'s.linger(tim)'
+     if 'tim' is positive, set the linger time to tim seconds.  If 'tim'
+     is 0, set the linger off.  In any case, return the old linger time
+     if it was set earlier.  Otherwise return -1.  The default value of
+     'tim' is -1.
+
+
+File: socket++.info,  Node: Timeouts,  Prev: Socket Options,  Up: sockbuf Class
+
+2.6 Time Outs While Reading and Writing
+=======================================
+
+Time outs are very useful in handling data of unknown sizes and formats
+while reading and writing.  For example, how does one communicate with a
+socket that sends chunks of data of unknown size and format?  If only
+'sockbuf::read' is used without time out, it will block indefinitely.
+In such cases, time out facility is the only answer.
+
+   The following idiom is recommended.  *Note Pitfalls:: for a complete
+example.
+
+         int old_tmo = s.recvtimeout (2) // set time out (2 seconds here)
+         for (;;) { // read or write
+             char buf[256];
+             int rval = s.read (buf, 256);
+             if (rval == 0 || rval == EOF) break;
+             // process buf here
+         }
+         s.recvtimeout (old_tmo); // reset time out
+
+   In what follows,
+   - 's' is a 'sockbuf' object
+   - 'wp' is waiting period in seconds
+
+'s.recvtimeout(wp)'
+     sets the recv timeout to 'wp' seconds.  If 'wp' is -1, it is a
+     block and if 'wp' is 0, it is a poll.
+
+     It affects all read functions.  If the socket is not read ready
+     within 'wp' seconds, the read call will return 0.  It also affects
+     'sockbuf::underflow'.  'sockbuf::underflow' will not set the
+     '_S_EOF_SEEN' flag if it is returning EOF because of timeout.
+
+     'sockbuf::recvtimeout' returns the old recv timeout value.
+
+'s.sendtimeout(wp)'
+     sets the send timeout to 'wp' seconds.  If 'wp' is -1, it is a
+     block and if 'wp' is 0, it is a poll.
+
+     It affects all write functions.  If the socket is not write ready
+     within 'wp' seconds, the write call will return 0.
+
+     'sockbuf::sendtimeout' returns the old send timeout value.
+
+
+File: socket++.info,  Node: sockAddr Class,  Next: sockinetbuf Class,  Prev: sockbuf Class,  Up: Top
+
+3 sockAddr Class
+****************
+
+Class 'sockAddr' is an abstract base class for all socket address
+classes.  That is, domain specific socket address classes are all
+derived from 'sockAddr' class.
+     _Note_: 'sockAddr' is not spelled 'sockaddr' in order to prevent
+     name clash with 'struct sockaddr' declared in '<sys/socket.h>'.
+
+   Non-abstract derived classes must have definitions for the following
+functions.
+
+'sockAddr::operator void* ()'
+     should simply return 'this'.
+
+'sockAddr::size()'
+     should return 'sizeof(*this)'.  The return type is 'int'.
+
+'sockAddr::family()'
+     should return address family (domain name) of the socket address.
+     The return type is 'int'
+
+
+File: socket++.info,  Node: sockinetbuf Class,  Next: sockinetaddr Class,  Prev: sockAddr Class,  Up: Top
+
+4 sockinetbuf Class
+*******************
+
+'sockinetbuf' class is derived from 'sockbuf' class and inherits most of
+the public functions of 'sockbuf'.  *Note sockbuf Class::, for more
+information on 'sockbuf'.  In addition, it provides methods for getting
+'sockinetaddr' of local and peer connections.  *Note sockinetaddr
+Class::, for more information on 'sockinetaddr'.
+
+* Menu:
+
+* Methods sockinetbuf::         Describes sockinetbuf member functions.
+* Datagram INET::               A pair of example programs demonstrating
+                                    datagram connection in inet domain.
+* Stream INET::                 A pair of example programs demonstrating
+                                    stream connection in inet domain.
+
+
+File: socket++.info,  Node: Methods sockinetbuf,  Next: Datagram INET,  Up: sockinetbuf Class
+
+4.1 Methods
+===========
+
+In what follows,
+   - 'ty' denotes the type of the socket connection and is of type
+     'sockbuf::type'
+   - 'proto' denotes the protocol and is of type int
+   - 'si, ins' are 'sockbuf' objects and are in INET domain
+   - 'adr' denotes an INET address in host byte order and is of type
+     unsigned long
+   - 'serv' denotes a service like "nntp" and is of type char*
+   - 'proto' denotes a protocol like "tcp" and is of type char*
+   - 'thostname' is of type char* and denotes the name of a host like
+     '"kelvin.acc.virginia.edu"' or '"128.143.24.31"'.
+   - 'portno' denotes a port in host byte order and is of type int
+
+'sockinetbuf ins(ty, proto)'
+     Constructs a 'sockinetbuf' object 'ins' whose socket communication
+     type is 'ty' and protocol is 'proto'.  'proto' defaults to 0.
+
+'sockinetbuf ins(si)'
+     Constructs a 'sockinetbuf' object 'ins' which uses the same socket
+     as 'si' uses.
+
+'ins = si'
+     performs the same function as 'sockbuf::operator='.  *Note sockbuf
+     Class::, for more details.
+
+'ins.open(ty, proto)'
+     create a new 'sockinetbuf' whose type and protocol are 'ty' and
+     'proto' respectively and assign it to 'ins'.
+
+'sockinetaddr sina = ins.localaddr()'
+     returns the local INET address of the 'sockinetbuf' object 'ins'.
+     The call will make sense only after a call to either
+     'sockbuf::bind' or 'sockbuf::connect'.
+
+'sockinetaddr sina = ins.peeraddr()'
+     returns the peer INET address of the 'sockinetbuf' object 'ins'.
+     The call will make sense only after a call to 'sockbuf::connect'.
+
+'const char* hn = ins.localhost()'
+     returns the local INET thostname of the 'sockinetbuf' object 'ins'.
+     The call will make sense only after a call to either
+     'sockbuf::bind' or 'sockbuf::connect'.
+
+'const char* hn = ins.peerhost()'
+     returns the peer INET thostname of the 'sockinetbuf' object 'ins'.
+     The call will make sense only after a call to 'sockbuf::connect'.
+
+'int pn = ins.localport()'
+     returns the local INET port number of the 'sockinetbuf' object
+     'ins' in host byte order.  The call will make sense only after a
+     call to either 'sockbuf::bind' or 'sockbuf::connect'.
+
+'int pn = ins.peerport()'
+     returns the peer INET port number of the 'sockinetbuf' object 'ins'
+     in local host byte order.  The call will make sense only after a
+     call to 'sockbuf::connect'.
+
+'ins.bind ()'
+     binds 'ins' to the default address INADDR_ANY and the default port.
+     It returns 0 on success and returns the errno on failure.
+
+'ins.bind (adr, portno)'
+     binds 'ins' to the address 'adr' and the port 'portno'.  It returns
+     0 on success and returns the errno on failure.
+
+'ins.bind (adr, serv, proto)'
+     binds 'ins' to the address, 'adr' and the port corresponding to the
+     service 'serv' and the protocol 'proto'>.  It returns 0 on success
+     and returns the errno on failure.
+
+'ins.bind (thostname, portno)'
+     binds 'ins' to the address corresponding to the hostname
+     'thostname' and the port 'portno'.  It returns 0 on success and
+     returns the errno on failure.
+
+'ins.bind (thostname, serv, proto)'
+     binds 'ins' to the address corresponding to the hostname
+     'thostname' and the port corresponding to the service 'serv' and
+     the protocol 'proto'>.  It returns 0 on success and returns the
+     errno on failure.
+
+'ins.connect (adr, portno)'
+     connects 'ins' to the address 'adr' and the port 'portno'.  It
+     returns 0 on success and returns the errno on failure.
+
+'ins.connect (adr, serv, proto)'
+     connects 'ins' to the address, 'adr' and the port corresponding to
+     the service 'serv' and the protocol 'proto'>.  It returns 0 on
+     success and returns the errno on failure.
+
+'ins.connect (thostname, portno)'
+     connects 'ins' to the address corresponding to the hostname
+     'thostname' and the port 'portno'.  It returns 0 on success and
+     returns the errno on failure.
+
+'ins.connect (thostname, serv, proto)'
+     connects 'ins' to the address corresponding to the hostname
+     'thostname' and the port corresponding to the service 'serv' and
+     the protocol 'proto'>.  It returns 0 on success and returns the
+     errno on failure.
+
+
+File: socket++.info,  Node: Datagram INET,  Next: Stream INET,  Prev: Methods sockinetbuf,  Up: sockinetbuf Class
+
+4.2 INET Datagram Sockets
+=========================
+
+The following two programs illustrates how to use 'sockinetbuf' class
+for datagram connection in INET domain.  'tdinread.cc' also shows how to
+use 'isockinet' class and 'tdinwrite.cc' shows how to use 'osockinet'
+class.
+
+tdinread.cc
+-----------
+
+     // reads data sent by tdinwrite.cc
+     #include <sockinet.h>
+
+     int main(int ac, char** av)
+     {
+             isockinet  is (sockbuf::sock_dgram);
+             is->bind();
+
+             cout << "localhost = " << so.localhost() << endl
+                  << "localport = " << so.localport() << endl;
+
+             char         buf[256];
+             int          n;
+
+             is >> n;
+             cout << av[0] << ": ";
+             while(n--) {
+                     is >> buf;
+                     cout << buf << ' ';
+             }
+             cout << endl;
+
+             return 0;
+     }
+
+tdinwrite.cc
+------------
+
+     // sends data to tdinread.cc
+     #include <sockinetbuf.h>
+     #include <stdlib.h>
+
+     int main(int ac, char** av)
+     {
+             if (ac < 3) {
+                     cerr << "USAGE: " << av[0] << " thostname port-number "
+                          << "data ... " << endl;
+                     return 1;
+             }
+
+             osockinet os (sockbuf::sock_dgram);
+             os->connect (av[1], atoi(av[2]));
+
+             cout << "local: " << so.localport() << ' '
+                               << so.localhost() << endl
+                  << "peer:  " << so.peerport() << ' '
+                               << so.peerhost() << endl;
+
+             os << ac-3; av += 3;
+             while(*av) os << *av++ << ' ';
+             os << endl;
+
+             return 0;
+     }
+
+
+
+File: socket++.info,  Node: Stream INET,  Prev: Datagram INET,  Up: sockinetbuf Class
+
+4.3 INET Stream Sockets
+=======================
+
+The following two programs illustrates the use of 'sockinetbuf' class
+for stream connection in INET domain.  It also shows how to use
+'iosockinet' class.
+
+tsinread.cc
+-----------
+
+     // receives strings from tsinwrite.cc and sends the strlen
+     // of each string back to tsinwrite.cc
+     #include        <sockinet.h>
+
+     int main()
+     {
+             sockinetbuf     si(sockbuf::sock_stream);
+             si.bind();
+
+             cout << si.localhost() << ' ' << si.localport() << endl;
+             si.listen();
+
+             iosockinet s = si.accept();
+             char          buf[1024];
+
+             while (s >> buf) {
+                     cout << buf << ' ';
+                     s << ::strlen(buf) << endl;
+             }
+             cout << endl;
+
+             return 0;
+     }
+
+tsinwrite.cc
+------------
+
+     // sends strings to tsinread.cc and gets back their length
+     // usage: tsinwrite hostname portno
+     //        see the output of tsinread for what hostname and portno to use
+
+     #include        <sockinet.h>
+     #include        <stdlib.h>
+
+     int main(int ac, char** av)
+     {
+             iosockinet sio (sockbuf::sock_stream);
+             sio->connect (av[1], atoi (av[2]));
+
+             sio << "Hello! This is a test\n" << flush;
+
+             // terminate the while loop in tsinread.cc
+             si.shutdown(sockbuf::shut_write);
+
+             int len;
+             while (s >> len) cout << len << ' ';
+             cout << endl;
+
+             return 0;
+     }
+
+
+File: socket++.info,  Node: sockinetaddr Class,  Next: sockunixbuf Class,  Prev: sockinetbuf Class,  Up: Top
+
+5 sockinetaddr Class
+********************
+
+Class 'sockinetaddr' is derived from 'sockAddr' declared in
+'<sockstream.h>' and from 'sockaddr_in' declared in '<netinet/in.h>'.
+Always use a 'sockinetaddr' object for an address with INET domain of
+sockets.  *Note Connection Establishment::.
+
+   In what follows,
+   - 'adr' denotes an INET address in host byte order and is of type
+     unsigned long
+   - 'serv' denotes a service like "nntp" and is of type char*
+   - 'proto' denotes a protocol like "tcp" and is of type char*
+   - 'thostname' is of type char* and denotes the name of a host like
+     '"kelvin.acc.virginia.edu"' or '"128.143.24.31"'.
+   - 'portno' denotes a port in host byte order and is of type int
+
+'sockinetaddr sina'
+     Constructs a 'sockinetaddr' object 'sina' with default address
+     INADDR_ANY and default port number 0.
+
+'sockinetaddr sina(adr, portno)'
+     Constructs a 'sockinetaddr' object 'sina' setting inet address to
+     'adr' and the port number to 'portno'.  'portno' defaults to 0.
+
+'sockinetaddr sina(adr, serv, proto)'
+     Constructs a 'sockinetaddr' object 'sina' setting inet address to
+     'adr' and the port number corresponding to the service 'serv' and
+     the protocol 'proto'.  The protocol defaults to "tcp".
+
+'sockinetaddr sina(thostname, portno)'
+     Constructs a 'sockinetaddr' object 'sina' setting inet address to
+     the address of 'thostname' and the port number to 'portno'.
+     'portno' defaults to 0.
+
+'sockinetaddr sina(thostname, serv, proto)'
+     Constructs a 'sockinetaddr' object 'sina' setting inet address to
+     the address of 'thostname' and the port number corresponding to the
+     service 'serv' and the protocol 'proto'.  The protocol defaults to
+     "tcp".
+
+'void* a = sina'
+     returns the address of the 'sockaddr_in' part of 'sockinetaddr'
+     object 'sina' as void*.
+
+'int sz = sina.size()'
+     returns the sizeof 'sockaddr_in' part of 'sockinetaddr' object
+     'sina'.
+
+'int af = sina.family()'
+     returns 'sockinetbuf::af_inet' if all is well.
+
+'int pn = sina.getport()'
+     returns the port number of the 'sockinetaddr' object 'sina' in host
+     byte order.
+
+'const char* hn = getthostname()'
+     returns the host name of the 'sockinetaddr' object 'sina'.
+
+
+File: socket++.info,  Node: sockunixbuf Class,  Next: sockunixaddr Class,  Prev: sockinetaddr Class,  Up: Top
+
+6 sockunixbuf Class
+*******************
+
+'sockunixbuf' class is derived from 'sockbuf' class declared in
+'<sockstream.h>' and hence, inherits most of the public member functions
+of 'sockbuf'.  *Note sockbuf Class::, for more information on 'sockbuf'.
+
+* Menu:
+
+* Methods sockunixbuf::         Describes sockunixbuf member functions
+* Datagram UNIX::               A pair of example programs demonstrating
+                                    datagram connection in UNIX domain
+* Stream UNIX::                 A pair of example programs demonstrating
+                                    stream connection in UNIX domain
+
+
+File: socket++.info,  Node: Methods sockunixbuf,  Next: Datagram UNIX,  Up: sockunixbuf Class
+
+6.1 Methods
+===========
+
+In what follows,
+   - 'ty' denotes the socket type and is of type 'sockbuf::type'
+   - 'proto' denotes the protocol number and is of type int
+   - 'su' is a 'sockbuf' and must be in UNIX domain
+   - 'path' is the UNIX path name like "/tmp/unix_socket"
+
+'sockunixbuf uns(ty, proto)'
+     Constructs a 'sockunixbuf' object 'uns' with 'ty' as its type and
+     'proto' as its protocol number.  'proto' defaults to 0.
+
+'sockunixbuf uns = su'
+     Constructs a 'sockunixbuf' object 'uns' which uses the same socket
+     as is used by 'su'.
+
+'uns = su'
+     'sockunixbuf' object 'uns' closes its current socket if no other
+     'sockbuf' is referring to it and uses the socket that 'sockbuf'
+     object 'su' is using.
+
+'uns.open(ty, proto)'
+     create a 'sockunixbuf' object with 'ty' as its type and 'proto' as
+     its protocol and assign the 'sockunixbuf' object so created to
+     '*this'.  It returns 'this'.  'proto' defaults to 0.
+
+'uns.bind(path)'
+     binds 'uns' to the UNIX pathname 'path'.  It returns 0 on success
+     and returns the errno on failure.
+
+'uns.connect(path)'
+     connects 'uns' to the UNIX pathname 'path'.  It returns 0 on
+     success and returns the errno on failure.
+
+
+File: socket++.info,  Node: Datagram UNIX,  Next: Stream UNIX,  Prev: Methods sockunixbuf,  Up: sockunixbuf Class
+
+6.2 UNIX Datagram Sockets
+=========================
+
+The following two programs illustrates how to use 'sockunixbuf' class
+for datagram connection in UNIX domain.  'tdunread.cc' also shows how to
+use 'isockunix' class and 'tdunwrite.cc' shows how to use 'osockunix'
+class.
+
+tdunread.cc
+-----------
+
+     // reads data sent by tdunwrite.cc
+     #include <sockunix.h>
+     #include <unistd.h>
+     #include <errno.h>
+
+     int main(int ac, char** av)
+     {
+             if (ac != 2) {
+                     cerr << "USAGE: " << av[0] << " socket_path_name\n";
+                     return 1;
+             }
+
+             // isockunix builds the sockunixbuf object
+             isockunix 	su (sockbuf::sock_dgram);
+
+             su->bind(av[1]);
+
+             cout << "Socket name = " << av[1] << endl;
+
+             if (chmod(av[1], 0777) == -1) {
+                     perror("chmod");
+                     return 1;
+             }
+
+             char buf[1024];
+             int i;
+             su >> i;
+             cout << av[0] << ": " << i << " strings: ";
+             while (i--) {
+                     su >> buf;
+                     cout  << buf << ' ';
+             }
+             cout << endl;
+
+             unlink(av[1]);
+             return 0;
+     }
+
+tdunwrite.cc
+------------
+
+     // sends data to tdunread.cc
+     #include <sockunix.h>
+
+     int main(int ac, char** av)
+     {
+             if (ac < 2) {
+                     cerr << "USAGE: " << av[0]
+                          << " socket_path_name data...\n";
+                     return 1;
+             }
+
+             osockunix	su (sockbuf::sock_dgram);
+
+     	su->connect (av[1]);
+
+             su << ac << ' ';
+             while (*av) { su << av[i] << ' '; av++; }
+             su << endl;
+
+             return 0;
+     }
+
+
+File: socket++.info,  Node: Stream UNIX,  Prev: Datagram UNIX,  Up: sockunixbuf Class
+
+6.3 UNIX Stream Sockets
+=======================
+
+The following two programs illustrates how to use 'sockunixbuf' class
+for stream connection in UNIX domain.  It also shows how to use
+'iosockunix' class.
+
+tsunread.cc
+-----------
+
+     // exchanges char strings with tsunwrite.cc
+     #include <sockunix.h>
+     #include <unistd.h>
+     #include <errno.h>
+
+     int main(int ac, char** av)
+     {
+             if (ac != 2) {
+                     cerr << "USAGE: " << av[0] << " socket_path_name\n";
+                     return 1;
+             }
+
+             sockunixbuf  su(sockbuf::sock_stream);
+             su.bind(av [1]);
+
+             cout << "Socket name = " << av[1] << endl;
+
+             if (chmod(av[1], 0777) == -1) {
+                     perror("chmod");
+                     return 1;
+             }
+
+             su.listen(3);
+
+             iosockunix ioput = su.accept ();
+             char       buf[1024];
+
+             ioput << av[0] << ' ' << av[1] << endl;
+             while ( ioput >> buf ) cout << av[0] << ": " << buf << endl;
+             unlink(av[1]);
+             return 0;
+     }
+
+tsunwrite.cc
+------------
+
+     // exchanges char strings with tsunread.cc
+     #include <sockunix.h>
+
+     int main(int ac, char** av)
+     {
+             if (ac < 2) {
+                     cerr << "USAGE: " << av[0]
+                          << " socket_path_name data...\n";
+                     return 1;
+             }
+
+             iosockunix oput (sockbuf::sock_stream);
+             oput->connect (av [1]);
+
+             char buf[128];
+
+             oput >> buf;
+             cout << buf << ' ';
+             oput >> buf;
+             cout << buf << endl;
+
+             while (*av) oput << *av++ << ' ';
+             oput << endl;
+
+             return 0;
+     }
+
+
+File: socket++.info,  Node: sockunixaddr Class,  Next: sockstream Classes,  Prev: sockunixbuf Class,  Up: Top
+
+7 sockunixaddr Class
+********************
+
+Class 'sockunixaddr' is derived from class 'sockAddr' declared in
+'<sockstream.h>' and from struct 'sockaddr_un' declared in '<sys/un.h>'.
+Always use 'sockunixaddr' objects for addresses with UNIX domain of
+sockets.  *Note Connection Establishment::.
+
+   In what follows,
+   - 'path' is the UNIX path name like "/tmp/unix_socket"
+
+'sockunixaddr suna(path)'
+     Constructs a 'sockunixaddr' object 'suna' with 'path' as the UNIX
+     path name.
+
+'void* a = suna'
+     returns the address of the 'sockaddr_un' part of 'sockunixaddr'
+     object 'suna' as void*.
+
+'int sz = suna.size()'
+     returns the sizeof 'sockaddr_un' part of 'sockunixaddr' object
+     'suna'.
+
+'int af = suna.family()'
+     returns 'sockunixbuf::af_unix' if all is well.
+
+
+File: socket++.info,  Node: sockstream Classes,  Next: pipestream Classes,  Prev: sockunixaddr Class,  Up: Top
+
+8 sockstream Classes
+********************
+
+sockstream classes are designed in such a way that they provide the same
+interface as their stream counterparts do.  We have 'isockstream'
+derived from 'istream' and 'osockstream' derived from 'ostream'.  We
+also have 'iosockstream' which is derived from 'iostream'.
+
+   Each domain also has its own set of 'stream' classes.  For example,
+'unix' domain has 'isockunix', 'osockunix', and 'iosockunix' derived
+from 'isockstream', 'osockstream', and 'iosockstream' respectively.
+Similarly, 'inet' domain has 'isockinet', 'osockinet', and 'iosockinet'.
+
+* Menu:
+
+* iosockstream::             Generic IOStream classes for sockbuf
+                                   buffers.
+* iosockinet::               IOStream classes for INET domain of
+                                   sockets.
+* iosockunix::               IOStream classes for UNIX domain of
+                                   sockets.
+
+
+File: socket++.info,  Node: iosockstream,  Next: iosockinet,  Up: sockstream Classes
+
+8.1 iosockstreams
+=================
+
+8.1.1 isockstream Class
+-----------------------
+
+Since 'isockstream' is publicly derived from 'istream', most of the
+public functions of 'istream' are also available in 'isockstream'.
+
+   'isockstream' redefines 'rdbuf()' defined in its virtual base class
+'ios'.  Since, 'ios::rdbuf()' is not virtual, care must be taken to call
+the correct 'rdbuf()' through a reference or a pointer to an object of
+class 'isockstream'.
+
+   In what follows,
+   - 'sb' is a 'sockbuf' object
+   - 'sbp' is a pointer to a 'sockbuf' object
+
+'isockstream is(sb)'
+     Constructs an 'isockstream' object 'is' with 'sb' as its 'sockbuf'.
+
+'isockstream is(sbp)'
+     Constructs an 'isockstream' object 'is' with '*sbp' as its
+     'sockbuf'.
+
+'sbp = is.rdbuf()'
+     returns a pointer to the 'sockbuf' of the 'isockstream' object
+     'is'.
+
+'isockstream::operator -> ()'
+     returns a pointer to the 'isockstream''s 'sockbuf' so that the user
+     can use 'isockstream' object as a 'sockbuf' object.
+
+              is->connect (sa); // same as is.rdbuf()->connect (sa);
+
+8.1.2 osockstream Class
+-----------------------
+
+Since 'osockstream' is publicly derived from 'ostream', most of the
+public functions of 'ostream' are also available in 'osockstream'.
+
+   'osockstream' redefines 'rdbuf()' defined in its virtual base class
+'ios'.  Since, 'ios::rdbuf()' is not virtual, care must be taken to call
+the correct 'rdbuf()' through a reference or a pointer to an object of
+class 'osockstream'.
+
+   In what follows,
+   - 'sb' is a 'sockbuf' object
+   - 'sbp' is a pointer to a 'sockbuf' object
+
+'osockstream os(sb)'
+     Constructs an 'osockstream' object 'os' with 'sb' as its 'sockbuf'.
+
+'osockstream os(sbp)'
+     Constructs an 'osockstream' object 'os' with '*sbp' as its
+     'sockbuf'.
+
+'sbp = os.rdbuf()'
+     returns a pointer to the 'sockbuf' of the 'osockstream' object
+     'os'.
+
+'osockstream::operator -> ()'
+     returns a pointer to the 'osockstream''s 'sockbuf' so that the user
+     can use 'osockstream' object as a 'sockbuf' object.
+
+              os->connect (sa); // same as os.rdbuf()->connect (sa);
+
+8.1.3 iosockstream Class
+------------------------
+
+Since 'iosockstream' is publicly derived from 'iostream', most of the
+public functions of 'iostream' are also available in 'iosockstream'.
+
+   'iosockstream' redefines 'rdbuf()' defined in its virtual base class
+'ios'.  Since, 'ios::rdbuf()' is not virtual, care must be taken to call
+the correct 'rdbuf()' through a reference or a pointer to an object of
+class 'iosockstream'.
+
+   In what follows,
+   - 'sb' is a 'sockbuf' object
+   - 'sbp' is a pointer to a 'sockbuf' object
+
+'iosockstream io(sb)'
+     Constructs an 'iosockstream' object 'io' with 'sb' as its
+     'sockbuf'.
+
+'iosockstream io(sbp)'
+     Constructs an 'iosockstream' object 'io' with '*sbp' as its
+     'sockbuf'.
+
+'sbp = io.rdbuf()'
+     returns a pointer to the 'sockbuf' of the 'iosockstream' object
+     'io'.
+
+'iosockstream::operator -> ()'
+     returns a pointer to the 'iosockstream''s 'sockbuf' so that the
+     user can use 'iosockstream' object as a 'sockbuf' object.
+
+              io->connect (sa); // same as io.rdbuf()->connect (sa);
+
+
+File: socket++.info,  Node: iosockinet,  Next: iosockunix,  Prev: iosockstream,  Up: sockstream Classes
+
+8.2 iosockinet Stream Classes
+=============================
+
+We discus only 'isockinet' class here.  'osockinet' and 'iosockinet' are
+similar and are left out.  However, they are covered in the examples
+that follow.
+
+8.2.1 isockinet
+---------------
+
+'isockinet' is used to handle interprocess communication in INET domain.
+It is derived from 'isockstream' class and it uses a 'sockinetbuf' as
+its stream buffer.  *Note iosockstream::, for more details on
+'isockstream'.  *Note sockinetbuf Class::, for information on
+'sockinetbuf'.
+
+   In what follows,
+   - 'ty' is a 'sockbuf::type' and must be one of
+     'sockbuf::sock_stream', 'sockbuf::sock_dgram', 'sockbuf::sock_raw',
+     'sockbuf::sock_rdm', and 'sockbuf::sock_seqpacket'
+   - 'proto' denotes the protocol number and is of type int
+   - 'sb' is a 'sockbuf' object and must be in INET domain
+   - 'sinp' is a pointer to an object of 'sockinetbuf'
+
+'isockinet is (ty, proto)'
+     constructs an 'isockinet' object 'is' whose 'sockinetbuf' buffer is
+     of the type 'ty' and has the protocol number 'proto'.  The default
+     protocol number is 0.
+
+'isockinet is (sb)'
+     constructs a 'isockinet' object 'is' whose 'sockinetbuf' is 'sb'.
+     'sb' must be in INET domain.
+
+'isockinet is (sinp)'
+     constructs a 'isockinet' object 'is' whose 'sockinetbuf' is 'sinp'.
+
+'sinp = is.rdbuf ()'
+     returns a pointer to the 'sockinetbuf' of 'isockinet' object 'is'.
+
+'isockinet::operator ->'
+     returns 'sockinetbuf' of 'sockinet' so that the 'sockinet' object
+     acts as a smart pointer to 'sockinetbuf'.
+
+                  is->localhost (); // same as is.rdbuf ()->localhost ();
+
+8.2.2 iosockinet examples
+-------------------------
+
+The first pair of examples demonstrates datagram socket connections in
+the INET domain.  First, 'tdinread' prints its local host and local port
+on stdout and waits for input in the connection.  'tdinwrite' is started
+with the local host and local port of 'tdinread' as arguments.  It sends
+the string "How do ye do!"  to 'tdinread' which in turn reads the string
+and prints on its stdout.
+
+     // tdinread.cc
+     #include <sockinet.h>
+
+     int main ()
+     {
+         char buf[256];
+         isockinet is (sockbuf::sock_dgram);
+         is->bind ();
+
+         cout << is->localhost() << ' ' << is->localport() << endl;
+
+         is.getline (buf);
+         cout << buf << endl;
+
+         return 0;
+     }
+
+     // tdinwrite.cc--tdinwrite hostname portno
+     #include <sockinet.h>
+     #include <stdlib.h>
+
+     int main (int ac, char** av)
+     {
+         osockinet os (sockbuf::sock_dgram);
+         os->connect (av[1], atoi(av[2]));
+         os << "How do ye do!" << endl;
+         return 0;
+     }
+
+   The next example communicates with an nntp server through a
+'sockbuf::sock_stream' socket connection in INET domain.  After
+establishing a connection to the nntp server, it sends a "HELP" command
+and gets back the HELP message before sending the "QUIT" command.
+
+     // tnntp.cc
+     #include <sockinet.h>
+
+     int main ()
+     {
+         char  buf[1024];
+         iosockinet io (sockbuf::sock_stream);
+         io->connect ("murdoch.acc.virginia.edu", "nntp", "tcp");
+         io.getline (buf, 1024); cout << buf << endl;
+         io << "HELP\r\n" << flush;
+         io.getline (buf, 1024); cout << buf << endl;
+         while (io.getline (buf, 1024))
+             if (buf[0] == '.' && buf[1] == '\r') break;
+             else if (buf[0] == '.' && buf[1] == '.') cout << buf+1 << endl;
+             else cout << buf << endl;
+         io << "QUIT\r\n" << flush;
+         io.getline (buf, 1024); cout << buf << endl;
+         return 0;
+     }
+
+
+File: socket++.info,  Node: iosockunix,  Prev: iosockinet,  Up: sockstream Classes
+
+8.3 iosockunix Classes
+======================
+
+We discuss only 'isockunix' here.  'osockunix' and 'iosockunix' are
+similar.
+
+8.3.1 isockunix class
+---------------------
+
+'isockunix' is used to handle interprocess communication in UNIX domain.
+It is derived from 'isockstream' class and it uses a 'sockunixbuf' as
+its stream buffer.  *Note iosockstream::, for more details on
+'isockstream'.  *Note sockunixbuf Class::, for information on
+'sockunixbuf'.
+
+   In what follows,
+   - 'ty' is a 'sockbuf::type' and must be one of
+     'sockbuf::sock_stream', 'sockbuf::sock_dgram', 'sockbuf::sock_raw',
+     'sockbuf::sock_rdm', and 'sockbuf::sock_seqpacket'
+   - 'proto' denotes the protocol number and is of type int
+   - 'sb' is a 'sockbuf' object and must be in UNIX domain
+   - 'sinp' is a pointer to an object of 'sockunixbuf'
+
+'isockunix is (ty, proto)'
+     constructs an 'isockunix' object 'is' whose 'sockunixbuf' buffer is
+     of the type 'ty' and has the protocol number 'proto'.  The default
+     protocol number is 0.
+
+'isockunix is (sb)'
+     constructs a 'isockunix' object 'is' whose 'sockunixbuf' is 'sb'.
+     'sb' must be in UNIX domain.
+
+'isockunix is (sinp)'
+     constructs a 'isockunix' object 'is' whose 'sockunixbuf' is 'sinp'.
+
+'sinp = is.rdbuf ()'
+     returns a pointer to the 'sockunixbuf' of 'isockunix' object 'is'.
+
+'isockunix::operator ->'
+     returns 'sockunixbuf' of 'sockunix' so that the 'sockunix' object
+     acts as a smart pointer to 'sockunixbuf'.
+
+                  is->localhost (); // same as is.rdbuf ()->localhost ();
+
+8.3.2 iosockunix examples
+-------------------------
+
+'tsunread' listens for connections.  When 'tsunwrite' requests
+connection, 'tsunread' accepts it and waits for input.  'tsunwrite'
+sends the string "Hello!!!"  to 'tsunread'.  'tsunread' reads the string
+sent by 'tsunwrite' and prints on its stdout.
+
+     // tsunread.cc
+     #include <sockunix.h>
+     #include <unistd.h>
+
+     int main ()
+     {
+         sockunixbuf sunb (sockbuf::sock_stream);
+         sunb.bind ("/tmp/socket+-");
+         sunb.listen (2);
+         isockunix is = sunb.accept ();
+         char buf[32];
+         is >> buf; cout << buf << endl;
+         unlink ("/tmp/socket+-");
+         return 0;
+     }
+
+     // tsunwrite.cc
+     #include <sockunix.h>
+     int main ()
+     {
+         osockunix os (sockbuf::sock_stream);
+         os->connect ("/tmp/socket++");
+         os << "Hello!!!\n" << flush;
+         return 0;
+     }
+
+
+File: socket++.info,  Node: pipestream Classes,  Next: Fork Class,  Prev: sockstream Classes,  Up: Top
+
+9 pipestream Classes
+********************
+
+'pipestream' stream classes provide the services of the UNIX system
+calls 'pipe' and 'socketpair' and the C library function 'popen'.
+'ipipestream', 'opipestream', and 'iopipestream' are obtained by simply
+deriving from 'isockstream', 'osockstream' and 'iosockstream'
+respectively.  *Note sockstream Classes:: for details.
+
+   In what follows,
+   - 'ip' is an 'ipipestream' object
+   - 'op' is an 'opipestream' object
+   - 'iop' is an 'iopipestream' object
+   - 'cmd' is a char* denoting an executable like "wc"
+   - 'ty' is of type 'sockbuf::type' indicating the type of the
+     connection
+   - 'proto' is an 'int' denoting a protocol number
+
+'ipipestream ip(cmd)'
+     construct an 'ipipestream' object 'ip' such that the output of the
+     command 'cmd' is available as input through 'ip'.
+
+'opipestream op(cmd)'
+     construct an 'opipestream' object 'op' such that the input for the
+     command 'cmd' can be send through 'op'.
+
+'iopipestream iop(cmd)'
+     construct an 'iopipestream' object 'iop' such that the input and
+     the output to the command 'cmd' can be sent and received through
+     'iop'.
+
+'iopipestream iop(ty, proto)'
+     construct a 'iopipestream' object 'iop' whose socket is a
+     socketpair of type 'ty' with protocol number 'proto'.  'ty'
+     defaults to 'sockbuf::sock_stream' and 'proto' defaults to 0.
+     Object 'iop' can be used either as a 'pipe' or as a 'socketpair'.
+
+'iop.pid ()'
+     return the process id of the child if the current process is the
+     parent or return 0.  If the process has not forked yet, return -1.
+
+'iopipestream::fork ()'
+     'fork()' is a static function of class 'iopipestream'.  'fork()'
+     forks the current process and appropriately sets the 'cpid' field
+     of the 'iopipestream' objects that have not forked yet.
+
+* Menu:
+
+* pipe Example::                 How to use pipestream as pipe?
+* socketpair Example::           How to use pipestream as socketpair?
+* popen Example::                How to use pipestream as popen?
+
+
+File: socket++.info,  Node: pipe Example,  Next: socketpair Example,  Up: pipestream Classes
+
+9.1 pipestream as pipe
+======================
+
+'pipe' is used to communicate between parent and child processes in the
+UNIX domain.
+
+   The following example illustrates how to use 'iopipestream' class as
+a 'pipe'.  The parent sends the string "I am the parent" to the child
+and receives the string "I am the child" from child.  The child, in
+turn, receives the string "I am the parent" from parent and sends the
+string "I am the child" to the parent.  Note the same 'iopipestream'
+object is used for input and output in each process.
+
+     #include <pipestream.h>
+
+     int main()
+     {
+             iopipestream p;
+             if ( p.fork() ) {
+                     char buf[128];
+                     p << "I am the parent\n" << flush;
+                     cout << "parent: ";
+                     while(p >> buf)
+                             cout << buf << ' ';
+                     cout << endl;
+             }else {
+                     char buf[128];
+                     p.getline(buf, 127);
+                     cout << "child: " << buf << endl;
+                     p << "I am the child\n" << flush;
+             }
+             return 0;
+     }
+
+
+File: socket++.info,  Node: socketpair Example,  Next: popen Example,  Prev: pipe Example,  Up: pipestream Classes
+
+9.2 pipestream as socketpair
+============================
+
+Like pipes, socketpairs also allow communication between parent and
+child processes.  But socketpairs are more flexible than pipes in the
+sense that they let the users choose the socket type and protocol.
+
+   The following example illustrates the use of 'iopipestream' class as
+a 'socketpair' whose type is 'sockbuf::sock_dgram'.  The parent sends
+the string "I am the parent" to the child and receives the string "I am
+the child" from the child.  The child, in turn, receives and sends the
+strings "I am the parent" and "I am the child" respectively from and to
+the parent.  Note in the following example that the same 'iopipestream'
+object is used for both the input and the output in each process.
+
+     #include <pipestream.h>
+
+     int main()
+     {
+             iopipestream p(sockbuf::sock_dgram);
+             if ( iopipestream::fork() ) {
+                     char buf[128];
+                     p << "I am the parent\n" << flush;
+                     p.getline(buf, 127);
+                     cout << "parent: " << buf << endl;
+             }else {
+                     char buf[128];
+                     p.getline(buf, 127);
+                     cout << "child: " << buf << endl;
+                     p << "I am the child\n" << flush;
+             }
+             return 0;
+     }
+
+
+File: socket++.info,  Node: popen Example,  Prev: socketpair Example,  Up: pipestream Classes
+
+9.3 pipestream as popen
+=======================
+
+'popen' is used to call an executable and send inputs and outputs to
+that executable.  For example, the following example executes
+"/bin/date", gets its output, and prints it to stdout.
+
+     #include <pipestream.h>
+
+     int main ()
+     {
+         char buf[128];
+         ipipestream p("/bin/date");
+
+         p.getline (buf, 127);
+         cout << buf << endl;
+         return 0;
+     }
+
+   Here is an example that prints "Hello World!!"  on stdout.  It uses
+'opipestream' object.
+
+     #include <pipestream.h>
+
+     int main ()
+     {
+         opipestream p("/bin/cat");
+         p << "Hello World!!\n" << endl;
+         return 0;
+     }
+
+   The following example illustrates the use of 'iopipestream' for both
+input and output.
+
+     #include <pipestream.h>
+
+     int main()
+     {
+             char buf[128];
+             iopipestream p("lpc");
+             p << "help\nquit\n" << flush;
+             while ( p.getline(buf, 127) ) cout << buf << endl;
+             return 0;
+     }
+
+
+File: socket++.info,  Node: Fork Class,  Next: protocol Class,  Prev: pipestream Classes,  Up: Top
+
+10 Fork Class
+*************
+
+You can effectively use the 'Fork' wrapper class to create child
+processes.  You can use the 'Fork' class, instead of directly using the
+system call fork (), if you desire the following:
+
+   * Avoid zombie processes
+   * Optionally kill child processes when the parent process terminates.
+   * Want to know the reason for abnormal termination of child
+     processes.
+
+   In what follows,
+   - 'killchild' is an integer.
+   - 'reason' is an integer.
+   - 'signo' is a valid signal.
+   - 'f' is a 'Fork' object.
+
+'Fork f(killchild, reason)'
+     constructs a 'Fork' object 'f'.  The constructor creates a child
+     process.  When the parent process terminates, it will kill the
+     child process if 'killchild' is not 0.  Otherwise, the parent
+     process will wait until all its child processes die.  If 'reason'
+     is not 0, then it gives the reason for a child process's death on
+     the stderr.
+
+'f.is_child ()'
+     returns 1 if the current process is the child process following the
+     fork in constructing the 'Fork' object 'f'.  Otherwise, return 0.
+
+'f.is_parent ()'
+     returns 1 if the current process is the parent process following
+     the fork in constructing the 'Fork' object 'f'.  Otherwise, return
+     0.
+
+'f.process_id ()'
+     returns the process id of the child process, if the current process
+     is the parent process.  Returns 0, if the current process is the
+     child process.  Returns -1, if fork failed.
+
+'Fork::suicide_signal (signo)'
+     is a static function.  Upon the reciept of the signal 'signo', the
+     current process will kill all its child processes created through
+     'Fork::Fork(int, int)' irrespective of the value of the 'killchild'
+     flag used in the construction of the 'Fork' objects.  'signo'
+     defaults to SIGTERM signal.
+
+10.1 Fork Example
+=================
+
+The following example illustrates the use of the 'Fork' class to create
+child processes.  First, we set up SIGTERM signal handler to kill all
+the child processes, by callling 'Fork::suicide_signal ()'.  Second, we
+create several child and grandchild processes.
+
+   You can kill the top most parent process and all its children by
+sending a SIGTERM signal to the top most parent process.
+
+     // tfork.C
+     #include <iostream.h>
+     #include <Fork.h>
+
+     static void print (char* name, pid_t child)
+     {
+       if (child)
+         cerr << "Parent " << getppid () << "; "
+           << name << ' ' << getpid () << "; Child " << child << ";\n";
+     }
+
+     int main (int ac, char** av)
+     {
+       Fork::suicide_signal (SIGTERM);
+
+       Fork a(0, 1);
+
+       print ("a", a.process_id ());
+
+       if (a.is_child ()) {
+         sleep (3000);
+       } else if (a.is_parent ()) {
+         Fork b (1, 1);
+         print ("b", b.process_id ());
+         {
+           Fork c (b.is_parent (), 1);
+           if (b.is_child ())
+     	print ("cchild", c.process_id ());
+           else
+     	print ("cparent", c.process_id ());
+           if (c.is_child ()) {
+     	sleep (3000);
+     	return 0;
+           }
+         }
+         if (b.is_child ()) {
+           sleep (120);
+           return 0x8;
+         }
+       }
+
+       return 0;
+     }
+
+
+
+File: socket++.info,  Node: protocol Class,  Next: echo Class,  Prev: Fork Class,  Up: Top
+
+11 Class protocol
+*****************
+
+'protocol' class is the base class for all the other application
+protocol classes like 'echo', 'smtp', etc.  'protocol' is derived
+publicly from 'iosockstream'.  It uses 'protocolbuf' class, a nested
+class of 'protocol', as its stream buffer.
+
+   The 'protocol' class is an abstract class and thus, you cannot
+instantiate an object of 'protocol'.
+
+11.1 Class protocol::protocolbuf
+================================
+
+'protocol::protocolbuf' class is publicly derived from 'sockinetbuf' and
+thus, it inherits all the latter's public member functions.  In
+addition, the 'protocolbuf' defines the following member functions.
+
+   In what follows,
+   - 'p' is an object of a non-abstract class derived from
+     'protocolbuf'.
+   - 'pname' is the transport protocol name which is either
+     'protocol::tcp' or 'protocol::udp'.
+   - 'addr' is an unsigned long denoting the valid address of a machine
+     in host byte order.
+   - 'host' is a char string denoting the name of a machine like
+     "kelvin.seas.virginia.edu".
+   - 'portno' is an int and denotes the port number in host byte order.
+
+'protocol::protocolbuf::protocolbuf (pname)'
+     constructs 'protocolbuf' object with the transport protocol set to
+     'pname'.
+
+'p.protocol_name ()'
+     returns the name of the transport protocol of 'p' as a char string.
+
+'p.rfc_name ()'
+     returns the name of the application protocol name of 'p' as a char
+     string.  'protocolbuf::rfc_name ()' is a pure virtual function;
+     thus, any class derived from 'protocol::protocolbuf' should provide
+     a definition for 'protocolbuf::rfc_name ()'.
+
+'p.rfc_doc ()'
+     returns the RFC document name of the application protocol of 'p' as
+     a char string.  'protocolbuf::rfc_doc ()' is a pure virtual
+     function; thus, any class derived from 'protocol::protocolbuf'
+     should provide a definition for 'protocolbuf::rfc_doc ()'.
+
+'p.serve_clients (portno)'
+     converts 'p' into a server.  Use the port specified in
+     '/etc/services' for the application if 'portno' < 0.  Use a default
+     port if '0 <= portno <= 1024'.  Otherwise, use 'portno' as the port
+     to accept clients requesting service.
+     'protocolbuf::serve_clients()' is pure virtual function; thus, any
+     class derived from 'protocol::protocolbuf' should provide a
+     definition for 'protocolbuf::serve_clients()'.
+
+     Please do not change the meaning of 'portno' when you derive your
+     own class.
+
+'p.bind ()'
+     same as 'p.serve_clients (-1)'.  It returns 0 on success and
+     returns the errno on failure.
+
+'p.connect ()'
+     connects to the local host's server for the application.  'p' acts
+     as the client.  It returns 0 on success and returns the errno on
+     failure.
+
+'p.connect (addr)'
+     connects to the server running at the machine with address, 'addr'.
+     'p' acts as the client.  It returns 0 on success and returns the
+     errno on failure.
+
+'p.connect (host)'
+     connects to the server running at the machine, 'host'.  'p' acts as
+     the client.  It returns 0 on success and returns the errno on
+     failure.
+
+'p.connect (host, portno)'
+     connects to the server servicing clients at 'portno' at the
+     machine, 'host'.  Unlike this connect call, the other variants of
+     connect uses the port specified in the '/etc/services' file.  It
+     returns 0 on success and returns the errno on failure.
+
+
+File: socket++.info,  Node: echo Class,  Next: smtp Class,  Prev: protocol Class,  Up: Top
+
+12 Echo Class
+*************
+
+The 'echo' class implements RFC 862.  An 'echo' object, as a client,
+will get back what ever data it sends to an 'echo' server.  Similarly,
+an 'echo' object, as a server, will echo back the data it receives from
+its client.
+
+   The 'echo' class is derived from 'protocol' class, and uses
+'echo::echobuf' as its stream buffer.  'echo::echobuf' is in turn is
+derived from 'protocol::protcolbuf'.
+
+   In what follows,
+   - 'e' is a 'echo' object.
+   - 'pname' is a transport protocol name and must be either
+     'protocol::tcp' or 'protocol::udp'.
+
+'echo e (pname)'
+     constructs the 'echo' object, 'e' with 'pname' as its transport
+     protocol name.
+
+'echo::operator -> ()'
+     an 'echo' object is a smart pointer for the underlying 'echobuf'.
+
+12.1 tsecho.C
+=============
+
+     // echo server. Serves clients at port 4000.
+     #include <echo.h>
+     #include <stdlib.h>
+
+     int main ()
+     {
+       echo server (protocol::tcp);
+       server->serve_clients (4000);
+       return 1;
+     }
+
+12.1.1 tcecho.C
+---------------
+
+     // echo client. Sends "mary had a litte lamb" to the server
+     #include <echo.h>
+     #include <stdlib.h>
+
+     int main ()
+     {
+       echo e(protocol::tcp);
+
+       e->connect ("kelvin.seas.virginia.edu", 4000);
+
+       cout << e->rfc_name () << ' ' << e->rfc_doc () << endl;
+
+       e << "mary had a little lamb\r\n" << flush;
+
+       char buf [256];
+       e.getline (buf, 255);
+
+       cout << "got back: " << buf << endl;
+       return 0;
+     }
+
+
+
+File: socket++.info,  Node: smtp Class,  Next: Error Handling,  Prev: echo Class,  Up: Top
+
+13 SMTP Class
+*************
+
+The 'smtp' class, which is derived from 'protocol' class, implements RFC
+821.  It can be used only as a client.  Server function is not yet
+implemented.
+
+   'smtp' uses 'smtp::smtpbuf' as its underlying stream buffer.  Also,
+like the 'protocol' class, 'smtp' is a smart pointer class for it is
+'smtp::smtpbuf'.
+
+   In what follows,
+   - 's' is an 'smtp' object.
+   - 'sb' is an 'smtp::smtpbuf' object.
+   - 'io' is a pointer to an 'ostream'.
+   - 'buf' is a char buffer of length 'buflen'.
+   - 'str, str0, str1, ...' are all char strings.
+
+'smtp s (io)'
+     constructs an 'smtp' client, 's'.  Any response the client gets
+     from the server is sent to the ostream, 'io'.
+
+'sb.get_response ()'
+     gets the server response and sends it to 'io' of the 'smtpbuf'.
+
+'sb.send_cmd (str0, str1, str2)'
+     concatenates strings 'str0', 'str1', and 'str2' and sends the
+     concatenated string to the server before getting its response.
+
+'sb.send_buf (buf, buflen)'
+     sends the contents of the 'buf' to the server.
+
+'sb.helo ()'
+'sb.help (str)'
+'sb.quit ()'
+'sb.turn ()'
+'sb.rset ()'
+'sb.noop ()'
+'sb.data ()'
+'sb.vrfy (str)'
+'sb.expn (str)'
+     implements the respective SMTP commands.  See RFC 821 for the
+     meaning of each.
+
+'sb.mail (str)'
+     sends the mail command to the server.  'str' is the the reverse
+     path or the FROM address.
+
+'sb.rcpt (str)'
+     sends the recipient command to the server.  'str' is the forward
+     path or the TO address.
+
+'sb.data (buf, buflen)'
+     sends the contents of the buffer, 'buf' as the mail data to the
+     recipient previously established through 'smtpbuf::rcpt()' calls.
+
+'sb.data (filename)'
+     sends the contents of the file, 'filename' as the mail data to the
+     recipient previously established through 'smtpbuf::rcpt()' calls.
+
+13.1 tcsmtp.C
+=============
+
+     // smtp client.
+     // The president sends a message to gs4t@virginia.edu.
+     #include <smtp.h>
+     #include <stdio.h>
+     #include <pwd.h>
+     #include <unistd.h>
+
+     int main ()
+     {
+       smtp client (&cout);
+
+       // establish connection
+       client->connect ("fulton.seas.virginia.edu");
+       client->helo ();
+
+       // get help
+       client->help ();
+
+       // setup the FROM address
+       client->mail ("president@whitehouse.gov");
+
+       // setup the TO address
+       client->rcpt ("gs4t@virginia.edu");
+
+       // send the message
+       client->data ();
+       client << "Hi Sekar, I appoint you as the director of NASA\r\n" << flush;
+       client << "    -Bill, Hill, and Chel\r\n" << flush;
+       cout << client; // get the server response.
+
+       // finally quit
+       client->quit ();
+
+       return 0;
+     }
+
+
+
+File: socket++.info,  Node: Error Handling,  Next: Pitfalls,  Prev: smtp Class,  Up: Top
+
+14 Error Handling
+*****************
+
+Each class in the Socket++ library uses 'error(const char*)' member
+function to report any errors that may occur during a system call.  It
+first calls 'perror()' to report the error message for the 'errno' set
+by the system call.  It then calls 'sock_error (const char* nm, const
+char* errmsg)' where 'nm' is the name of the class.
+
+   The 'sock_error()' function simply prints the 'nm' and the 'errmsg'
+on the STDERR.
+
+
+File: socket++.info,  Node: Pitfalls,  Next: Index,  Prev: Error Handling,  Up: Top
+
+15 Pitfalls
+***********
+
+Deadlocks in datagram sockets are the most common mistakes that novices
+make.  To alleviate the problem, 'sockbuf' class provides timeout
+facilities that can be used effectively to avoid deadlocks.
+
+   Consider the following simple tsmtp example which sends the HELP
+command to a smtp server and gets back the help message.  Suppose it
+does not know the size of the help message nor the format of the
+message.  In such cases, the timeout facilities of 'sockbuf' class
+provides the required tools.
+
+   The example terminates the help message reception if the there is no
+input activity from the smtp server for 10 seconds.
+
+tsmtp.cc
+--------
+
+     #include <sockinet.h>
+
+     int main()
+     {
+     	iosockinet   sio(sockbuf::sock_stream);
+
+     	sio->connect("kelvin.seas.virginia.edu", "smtp", "tcp");
+
+     	char buf[512];
+     	sio.getline(buf, 511); cout << buf << endl;
+     	sio << "HELO kelvin\n" << flush;
+     	sio.getline(buf, 511); cout << buf << endl;
+
+     	sio << "HELP\n" << flush;
+
+             // set the receive timeout to 10 seconds
+             int tmo = sio->recvtimeout(10);
+
+     	while ( sio.getline(buf, 511) ) cout << buf << endl;
+     		// if the above while loop terminated due to timeout
+     		// clear the state of sio.
+     	if ( !sio->is_eof() )
+     		sio.clear();
+     	sio->recvtimeout(tmo); // reset the receive timeout time
+
+     	sio << "QUIT\n" << flush;
+     	sio.getline(buf, 511); cout << buf << endl;
+             return 0;
+     }
+
+
+File: socket++.info,  Node: Index,  Prev: Pitfalls,  Up: Top
+
+Index
+*****
+
+ [index ]
+* Menu:
+
+* accepting connections:                 Connection Establishment.
+                                                              (line  41)
+* acknowledgments:                       Acknowledgments.     (line   6)
+* base address class:                    sockAddr Class.      (line   6)
+* binding addresses:                     Connection Establishment.
+                                                              (line  22)
+* class isockinet:                       iosockinet.          (line  13)
+* class isockunix:                       iosockunix.          (line  12)
+* class sockbuf:                         sockbuf Class.       (line   6)
+* common mistakes:                       Pitfalls.            (line   6)
+* connect:                               Connection Establishment.
+                                                              (line  26)
+* connection establishment:              Connection Establishment.
+                                                              (line   6)
+* Copyright:                             Copying.             (line   6)
+* copyright notice:                      Copying.             (line   6)
+* datagram inet:                         Datagram INET.       (line   6)
+* datagram unix:                         Datagram UNIX.       (line   6)
+* echo class:                            echo Class.          (line   6)
+* echo::echo:                            echo Class.          (line  21)
+* echo::operator->:                      echo Class.          (line  25)
+* error handling:                        Error Handling.      (line   6)
+* flushing buffers:                      Constructors.        (line  10)
+* flushing output:                       Reading and Writing. (line 141)
+* fork class:                            Fork Class.          (line   6)
+* fork example:                          Fork Class.          (line  53)
+* Fork::Fork:                            Fork Class.          (line  22)
+* Fork::is_child:                        Fork Class.          (line  30)
+* Fork::is_parent:                       Fork Class.          (line  34)
+* Fork::process_id:                      Fork Class.          (line  39)
+* Fork::suicide_signal:                  Fork Class.          (line  44)
+* getpeername (see sockinetbuf::peeraddr): Methods sockinetbuf.
+                                                              (line  41)
+* getsockname (see sockinetbuf::localaddr): Methods sockinetbuf.
+                                                              (line  36)
+* getsockopt:                            Socket Options.      (line  40)
+* inet address class:                    sockinetaddr Class.  (line   6)
+* inet domain:                           sockinetbuf Class.   (line   6)
+* iopipestream::fork:                    pipestream Classes.  (line  45)
+* iopipestream::iopipestream:            pipestream Classes.  (line  30)
+* iopipestream::pid:                     pipestream Classes.  (line  41)
+* iosockinet example:                    Stream INET.         (line   6)
+* iosockinet examples:                   iosockinet.          (line  51)
+* iosockstream class:                    iosockstream.        (line  73)
+* iosockstream classes:                  sockstream Classes.  (line   6)
+* iosockstream::iosockstream:            iosockstream.        (line  86)
+* iosockstream::operator->:              iosockstream.        (line  98)
+* iosockstream::rdbuf:                   iosockstream.        (line  94)
+* iosockunix class:                      iosockunix.          (line   6)
+* iosockunix example:                    Stream UNIX.         (line   6)
+* iosockunix examples:                   iosockunix.          (line  50)
+* ipipestream::ipipestream:              pipestream Classes.  (line  22)
+* isockinet class:                       iosockinet.          (line  13)
+* isockinet example:                     Datagram INET.       (line   6)
+* isockinet::isockinet:                  iosockinet.          (line  28)
+* isockinet::operator->:                 iosockinet.          (line  43)
+* isockinet::rdbuf:                      iosockinet.          (line  40)
+* isockstream class:                     iosockstream.        (line   9)
+* isockstream::isockstream:              iosockstream.        (line  22)
+* isockstream::operator->:               iosockstream.        (line  33)
+* isockstream::rdbuf:                    iosockstream.        (line  29)
+* isockunix class:                       iosockunix.          (line  12)
+* isockunix example:                     Datagram UNIX.       (line   6)
+* isockunix::isockunix:                  iosockunix.          (line  27)
+* isockunix::operator->:                 iosockunix.          (line  42)
+* isockunix::rdbuf:                      iosockunix.          (line  39)
+* listening:                             Connection Establishment.
+                                                              (line  34)
+* names:                                 Connection Establishment.
+                                                              (line   6)
+* opipestream::opipestream:              pipestream Classes.  (line  26)
+* option getting:                        Socket Options.      (line   6)
+* option setting:                        Socket Options.      (line   6)
+* osockinet example:                     Datagram INET.       (line   6)
+* osockstream class:                     iosockstream.        (line  41)
+* osockstream::operator->:               iosockstream.        (line  65)
+* osockstream::osockstream:              iosockstream.        (line  54)
+* osockstream::rdbuf:                    iosockstream.        (line  61)
+* osockunix example:                     Datagram UNIX.       (line   6)
+* overview of socket++:                  Overview of Socket++.
+                                                              (line   6)
+* pipe:                                  pipestream Classes.  (line   6)
+* pipe example:                          pipe Example.        (line   6)
+* pipestream classes:                    pipestream Classes.  (line   6)
+* pipestream examples:                   pipestream Classes.  (line   6)
+* pitfalls:                              Pitfalls.            (line   6)
+* popen:                                 pipestream Classes.  (line   6)
+* popen example:                         popen Example.       (line   6)
+* protcolbuf::protocol_name:             protocol Class.      (line  37)
+* protocol class:                        protocol Class.      (line   6)
+* protocolbuf class:                     protocol Class.      (line  17)
+* protocolbuf::bind:                     protocol Class.      (line  64)
+* protocolbuf::connect:                  protocol Class.      (line  68)
+* protocolbuf::protocolbuf:              protocol Class.      (line  33)
+* protocolbuf::rfc_doc:                  protocol Class.      (line  46)
+* protocolbuf::rfc_name:                 protocol Class.      (line  40)
+* protocolbuf::serve_clients:            protocol Class.      (line  52)
+* read timeouts:                         Timeouts.            (line   6)
+* setsockopt:                            Socket Options.      (line  46)
+* smtp class:                            smtp Class.          (line   6)
+* smtp::smtp:                            smtp Class.          (line  22)
+* smtpbuf::get_response:                 smtp Class.          (line  26)
+* smtpbuf::send_buf:                     smtp Class.          (line  33)
+* smtpbuf::send_cmd:                     smtp Class.          (line  29)
+* sockAddr class:                        sockAddr Class.      (line   6)
+* sockAddr::family:                      sockAddr Class.      (line  22)
+* sockAddr::operator void*:              sockAddr Class.      (line  16)
+* sockAddr::size:                        sockAddr Class.      (line  19)
+* sockbuf class:                         sockbuf Class.       (line   6)
+* sockbuf constructors:                  Constructors.        (line   6)
+* sockbuf destructor:                    Destructor.          (line   6)
+* sockbuf reading:                       Reading and Writing. (line   6)
+* sockbuf writing:                       Reading and Writing. (line   6)
+* sockbuf::accept:                       Connection Establishment.
+                                                              (line  41)
+* sockbuf::bind:                         Connection Establishment.
+                                                              (line  22)
+* sockbuf::broadcast:                    Socket Options.      (line  80)
+* sockbuf::clearerror:                   Socket Options.      (line  54)
+* sockbuf::close:                        Destructor.          (line  23)
+* sockbuf::connect:                      Connection Establishment.
+                                                              (line  26)
+* sockbuf::debug:                        Socket Options.      (line  57)
+* sockbuf::doallocate:                   Reading and Writing. (line 118)
+* sockbuf::dontroute:                    Socket Options.      (line  68)
+* sockbuf::flush_output:                 Reading and Writing. (line 112)
+* sockbuf::getopt:                       Socket Options.      (line  40)
+* sockbuf::gettype:                      Socket Options.      (line  51)
+* sockbuf::is_eof:                       Reading and Writing. (line  27)
+* sockbuf::is_exceptionpending:          Reading and Writing. (line 102)
+* sockbuf::is_open:                      Constructors.        (line  44)
+* sockbuf::is_open <1>:                  Reading and Writing. (line  23)
+* sockbuf::is_readready:                 Reading and Writing. (line  82)
+* sockbuf::is_writeready:                Reading and Writing. (line  92)
+* sockbuf::keepalive:                    Socket Options.      (line  86)
+* sockbuf::linger:                       Socket Options.      (line 102)
+* sockbuf::listen:                       Connection Establishment.
+                                                              (line  34)
+* sockbuf::msgflag:                      Reading and Writing. (line  37)
+* sockbuf::msgflag <1>:                  Reading and Writing. (line  63)
+* sockbuf::oobinline:                    Socket Options.      (line  74)
+* sockbuf::open:                         Constructors.        (line  41)
+* sockbuf::operator=:                    Constructors.        (line  48)
+* sockbuf::overflow:                     Reading and Writing. (line 131)
+* sockbuf::rcvbuf:                       Socket Options.      (line  97)
+* sockbuf::read:                         Reading and Writing. (line  58)
+* sockbuf::recv:                         Reading and Writing. (line  63)
+* sockbuf::recvfrom:                     Reading and Writing. (line  70)
+* sockbuf::recvmsg:                      Reading and Writing. (line  74)
+* sockbuf::recvtimeout:                  Reading and Writing. (line 151)
+* sockbuf::recvtimeout <1>:              Timeouts.            (line  29)
+* sockbuf::reuseaddr:                    Socket Options.      (line  62)
+* sockbuf::send:                         Reading and Writing. (line  37)
+* sockbuf::sendmsg:                      Reading and Writing. (line  50)
+* sockbuf::sendtimeout:                  Reading and Writing. (line 162)
+* sockbuf::sendtimeout <1>:              Timeouts.            (line  40)
+* sockbuf::sendto:                       Reading and Writing. (line  46)
+* sockbuf::setopt:                       Socket Options.      (line  46)
+* sockbuf::shutdown:                     Destructor.          (line  27)
+* sockbuf::shuthow:                      Destructor.          (line   6)
+* sockbuf::sndbuf:                       Socket Options.      (line  92)
+* sockbuf::sockbuf:                      Constructors.        (line  31)
+* sockbuf::sync:                         Reading and Writing. (line 141)
+* sockbuf::sys_read:                     Reading and Writing. (line  77)
+* sockbuf::sys_write:                    Reading and Writing. (line  53)
+* sockbuf::type:                         Constructors.        (line   6)
+* sockbuf::underflow:                    Reading and Writing. (line 124)
+* sockbuf::write:                        Reading and Writing. (line  31)
+* sockbuf::xsputn:                       Reading and Writing. (line 146)
+* sockbuf::~sockbuf:                     Destructor.          (line  17)
+* socket options:                        Socket Options.      (line   6)
+* socketpair:                            pipestream Classes.  (line   6)
+* socketpair example:                    socketpair Example.  (line   6)
+* sockinetaddr class:                    sockinetaddr Class.  (line   6)
+* sockinetaddr::family:                  sockinetaddr Class.  (line  53)
+* sockinetaddr::getport:                 sockinetaddr Class.  (line  56)
+* sockinetaddr::getthostname:            sockinetaddr Class.  (line  60)
+* sockinetaddr::operator void*:          sockinetaddr Class.  (line  45)
+* sockinetaddr::size:                    sockinetaddr Class.  (line  49)
+* sockinetaddr::sockinetaddr:            sockinetaddr Class.  (line  21)
+* sockinetbuf class:                     sockinetbuf Class.   (line   6)
+* sockinetbuf dgram example:             Datagram INET.       (line   6)
+* sockinetbuf stream example:            Stream INET.         (line   6)
+* sockinetbuf::bind:                     Methods sockinetbuf. (line  64)
+* sockinetbuf::connect:                  Methods sockinetbuf. (line  88)
+* sockinetbuf::localaddr:                Methods sockinetbuf. (line  36)
+* sockinetbuf::localhost:                Methods sockinetbuf. (line  45)
+* sockinetbuf::localport:                Methods sockinetbuf. (line  54)
+* sockinetbuf::open:                     Methods sockinetbuf. (line  32)
+* sockinetbuf::operator =:               Methods sockinetbuf. (line  28)
+* sockinetbuf::peeraddr:                 Methods sockinetbuf. (line  41)
+* sockinetbuf::peerhost:                 Methods sockinetbuf. (line  50)
+* sockinetbuf::peerport:                 Methods sockinetbuf. (line  59)
+* sockinetbuf::sockinetbuf:              Methods sockinetbuf. (line  20)
+* sockstream classes:                    sockstream Classes.  (line   6)
+* sockunixaddr class:                    sockunixaddr Class.  (line   6)
+* sockunixaddr::family:                  sockunixaddr Class.  (line  27)
+* sockunixaddr::operator void*:          sockunixaddr Class.  (line  19)
+* sockunixaddr::size:                    sockunixaddr Class.  (line  23)
+* sockunixaddr::sockunixaddr:            sockunixaddr Class.  (line  15)
+* sockunixbuf class:                     sockunixbuf Class.   (line   6)
+* sockunixbuf example:                   Stream UNIX.         (line   6)
+* sockunixbuf::bind:                     Methods sockunixbuf. (line  31)
+* sockunixbuf::connect:                  Methods sockunixbuf. (line  35)
+* sockunixbuf::open:                     Methods sockunixbuf. (line  26)
+* sockunixbuf::operator =:               Methods sockunixbuf. (line  21)
+* sockunixbuf::sockunixbuf:              Methods sockunixbuf. (line  13)
+* stream inet:                           Stream INET.         (line   6)
+* stream unix:                           Stream UNIX.         (line   6)
+* timeout example:                       Pitfalls.            (line  22)
+* timeouts:                              Timeouts.            (line   6)
+* unix address class:                    sockunixaddr Class.  (line   6)
+* unix domain:                           sockunixbuf Class.   (line   6)
+* write timeouts:                        Timeouts.            (line   6)
+
+
+
+Tag Table:
+Node: Top534
+Node: Copying2405
+Node: Acknowledgments2864
+Node: Overview of Socket++3895
+Node: sockbuf Class6188
+Node: Constructors7207
+Node: Destructor9037
+Node: Reading and Writing10146
+Node: Connection Establishment17406
+Node: Socket Options19272
+Node: Timeouts23839
+Node: sockAddr Class25641
+Node: sockinetbuf Class26438
+Node: Methods sockinetbuf27287
+Node: Datagram INET31609
+Node: Stream INET33449
+Node: sockinetaddr Class35098
+Node: sockunixbuf Class37466
+Node: Methods sockunixbuf38198
+Node: Datagram UNIX39517
+Node: Stream UNIX41426
+Node: sockunixaddr Class43296
+Node: sockstream Classes44196
+Node: iosockstream45241
+Node: iosockinet48534
+Node: iosockunix52289
+Node: pipestream Classes54841
+Node: pipe Example56991
+Node: socketpair Example58245
+Node: popen Example59715
+Node: Fork Class60850
+Node: protocol Class64155
+Node: echo Class67663
+Node: smtp Class69281
+Node: Error Handling72087
+Node: Pitfalls72636
+Node: Index74224
+
+End Tag Table
+
+
+Local Variables:
+coding: utf-8
+End:
